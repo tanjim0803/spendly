@@ -114,47 +114,91 @@ def seed_db():
         conn.commit()
 
 
-def get_user_stats(user_id):
+def get_user_stats(user_id, date_from=None, date_to=None):
     """
-    Calculates total spent and transaction count for a user.
+    Calculates total spent and transaction count for a user, optionally filtered by date.
     """
     with get_db() as conn:
-        row = conn.execute(
-            "SELECT SUM(amount) as total_spent, COUNT(id) as transaction_count FROM expenses WHERE user_id = ?",
-            (user_id,)
-        ).fetchone()
+        query = "SELECT SUM(amount) as total_spent, COUNT(id) as transaction_count FROM expenses WHERE user_id = ?"
+        params = [user_id]
+
+        if date_from and date_to:
+            query += " AND date BETWEEN ? AND ?"
+            params.extend([date_from, date_to])
+        elif date_from:
+            query += " AND date >= ?"
+            params.append(date_from)
+        elif date_to:
+            query += " AND date <= ?"
+            params.append(date_to)
+
+        row = conn.execute(query, params).fetchone()
         return dict(row) if row else {"total_spent": 0, "transaction_count": 0}
 
 
-def get_top_category(user_id):
+def get_top_category(user_id, date_from=None, date_to=None):
     """
-    Retrieves the category with the highest total spending for a user.
+    Retrieves the category with the highest total spending for a user, optionally filtered by date.
     """
     with get_db() as conn:
-        row = conn.execute(
-            "SELECT category FROM expenses WHERE user_id = ? GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1",
-            (user_id,)
-        ).fetchone()
+        query = "SELECT category FROM expenses WHERE user_id = ?"
+        params = [user_id]
+
+        if date_from and date_to:
+            query += " AND date BETWEEN ? AND ?"
+            params.extend([date_from, date_to])
+        elif date_from:
+            query += " AND date >= ?"
+            params.append(date_from)
+        elif date_to:
+            query += " AND date <= ?"
+            params.append(date_to)
+
+        query += " GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1"
+        row = conn.execute(query, params).fetchone()
         return row["category"] if row else None
 
 
-def get_recent_expenses(user_id, limit=5):
+def get_recent_expenses(user_id, limit=5, date_from=None, date_to=None):
     """
-    Retrieves the most recent expenses for a user.
-    """
-    with get_db() as conn:
-        return conn.execute(
-            "SELECT date, description, category, amount FROM expenses WHERE user_id = ? ORDER BY date DESC LIMIT ?",
-            (user_id, limit)
-        ).fetchall()
-
-
-def get_category_totals(user_id):
-    """
-    Retrieves the total spent per category for a user.
+    Retrieves the most recent expenses for a user, optionally filtered by date.
     """
     with get_db() as conn:
-        return conn.execute(
-            "SELECT category, SUM(amount) as total FROM expenses WHERE user_id = ? GROUP BY category",
-            (user_id,)
-        ).fetchall()
+        query = "SELECT date, description, category, amount FROM expenses WHERE user_id = ?"
+        params = [user_id]
+
+        if date_from and date_to:
+            query += " AND date BETWEEN ? AND ?"
+            params.extend([date_from, date_to])
+        elif date_from:
+            query += " AND date >= ?"
+            params.append(date_from)
+        elif date_to:
+            query += " AND date <= ?"
+            params.append(date_to)
+
+        query += " ORDER BY date DESC LIMIT ?"
+        params.append(limit)
+        return conn.execute(query, params).fetchall()
+
+
+def get_category_totals(user_id, date_from=None, date_to=None):
+    """
+    Retrieves the total spent per category for a user, optionally filtered by date.
+    """
+    with get_db() as conn:
+        query = "SELECT category, SUM(amount) as total FROM expenses WHERE user_id = ?"
+        params = [user_id]
+
+        if date_from and date_to:
+            query += " AND date BETWEEN ? AND ?"
+            params.extend([date_from, date_to])
+        elif date_from:
+            query += " AND date >= ?"
+            params.append(date_from)
+        elif date_to:
+            query += " AND date <= ?"
+            params.append(date_to)
+
+        query += " GROUP BY category"
+        return conn.execute(query, params).fetchall()

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile — Spendly{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <!-- User Info Card -->
+    <div class="auth-card profile-header">
+        <div class="profile-avatar">{{ user.initials }}</div>
+        <div class="profile-user-details">
+            <h2>{{ user.name }}</h2>
+            <p class="text-muted">{{ user.email }}</p>
+            <span class="member-label">Member since {{ user.joined_date }}</span>
+        </div>
+    </div>
+
+    <!-- Summary Stats Row -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <span class="stat-label">Total Spent</span>
+            <span class="stat-value">{{ stats.total_spent }}</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Transactions</span>
+            <span class="stat-value">{{ stats.transaction_count }}</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Top Category</span>
+            <span class="stat-value">{{ stats.top_category }}</span>
+        </div>
+    </div>
+
+    <!-- Transaction History -->
+    <div class="profile-section">
+        <h3 class="section-title">Recent Transactions</h3>
+        <div class="transaction-list">
+            {% for tx in recent_transactions %}
+            <div class="transaction-row">
+                <span class="tx-date">{{ tx.date }}</span>
+                <span class="tx-desc">{{ tx.desc }}</span>
+                <span class="hero-badge">{{ tx.category }}</span>
+                <span class="tx-amount">{{ tx.amount }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Category Breakdown -->
+    <div class="profile-section">
+        <h3 class="section-title">Spending by Category</h3>
+        <div class="category-breakdown">
+            {% for cat in category_breakdown %}
+            <div class="breakdown-row">
+                <div class="breakdown-info">
+                    <span class="cat-name">{{ cat.category }}</span>
+                    <span class="cat-amount">{{ cat.amount }}</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" style="width: {{ cat.percentage }}%;"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

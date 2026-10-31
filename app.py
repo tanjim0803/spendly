@@ -96,7 +96,40 @@ def logout():
 
 @app.route("/profile")
 def profile():
-    return "Profile page — coming in Step 4"
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    # Hardcoded mock data for UI validation (Step 4)
+    user = {
+        "name": "Tanjim Ahmed",
+        "email": "tanjim@example.com",
+        "joined_date": "October 2023",
+        "initials": "TA"
+    }
+    stats = {
+        "total_spent": "$2,450.00",
+        "transaction_count": "42",
+        "top_category": "Dining"
+    }
+    recent_transactions = [
+        {"date": "2023-10-25", "desc": "Starbucks Coffee", "category": "Dining", "amount": "-$6.50"},
+        {"date": "2023-10-24", "desc": "Amazon - Books", "category": "Shopping", "amount": "-$24.99"},
+        {"date": "2023-10-22", "desc": "Monthly Rent", "category": "Housing", "amount": "-$1,200.00"},
+    ]
+    category_breakdown = [
+        {"category": "Housing", "amount": "$1,200", "percentage": 60},
+        {"category": "Dining", "amount": "$450", "percentage": 20},
+        {"category": "Shopping", "amount": "$300", "percentage": 15},
+        {"category": "Other", "amount": "$100", "percentage": 5},
+    ]
+
+    return render_template(
+        "profile.html",
+        user=user,
+        stats=stats,
+        recent_transactions=recent_transactions,
+        category_breakdown=category_breakdown
+    )
 
 
 @app.route("/expenses/add")

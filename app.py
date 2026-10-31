@@ -1,5 +1,6 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime, timedelta
 from database.db import init_db, seed_db, get_user_by_email, create_user, get_user_by_id, get_user_stats, get_top_category, get_recent_expenses, get_category_totals
 
 
@@ -105,6 +106,31 @@ def profile():
     if not user_row:
         return redirect(url_for("logout"))
 
+    # Date Filtering
+    date_from = request.args.get("date_from")
+    date_to = request.args.get("date_to")
+    valid_date_from = None
+    valid_date_to = None
+
+    if date_from:
+        try:
+            datetime.strptime(date_from, "%Y-%m-%d")
+            valid_date_from = date_from
+        except ValueError:
+            date_from = None
+
+    if date_to:
+        try:
+            datetime.strptime(date_to, "%Y-%m-%d")
+            valid_date_to = date_to
+        except ValueError:
+            date_to = None
+
+    if valid_date_from and valid_date_to and valid_date_from > valid_date_to:
+        flash("Start date must be before end date.")
+        valid_date_from = None
+        valid_date_to = None
+
     # User Basic Info
     user = {
         "name": user_row["name"],
@@ -114,18 +140,18 @@ def profile():
     }
 
     # Summary Stats
-    stats_row = get_user_stats(user_id)
+    stats_row = get_user_stats(user_id, valid_date_from, valid_date_to)
     total_spent = stats_row.get("total_spent") or 0.0
     transaction_count = stats_row.get("transaction_count") or 0
 
     stats = {
         "total_spent": f"${total_spent:,.2f}",
         "transaction_count": str(transaction_count),
-        "top_category": get_top_category(user_id) or "None"
+        "top_category": get_top_category(user_id, valid_date_from, valid_date_to) or "None"
     }
 
     # Recent Transactions
-    recent_rows = get_recent_expenses(user_id, limit=5)
+    recent_rows = get_recent_expenses(user_id, limit=5, date_from=valid_date_from, date_to=valid_date_to)
     recent_transactions = []
     for row in recent_rows:
         amount = row["amount"]
@@ -137,7 +163,7 @@ def profile():
         })
 
     # Category Breakdown
-    category_rows = get_category_totals(user_id)
+    category_rows = get_category_totals(user_id, valid_date_from, valid_date_to)
     category_breakdown = []
     for row in category_rows:
         cat_total = row["total"]
@@ -148,12 +174,30 @@ def profile():
             "percentage": int(percentage)
         })
 
+    # Preset Date ranges for links
+    today = datetime.now()
+    first_of_month = today.replace(day=1).strftime("%Y-%m-%d")
+
+    # Last 3 months: today - 90 days
+    three_months_ago = (today - timedelta(days=90)).strftime("%Y-%m-%d")
+
+    # Last 6 months: today - 180 days
+    six_months_ago = (today - timedelta(days=180)).strftime("%Y-%m-%d")
+
     return render_template(
         "profile.html",
         user=user,
         stats=stats,
         recent_transactions=recent_transactions,
-        category_breakdown=category_breakdown
+        category_breakdown=category_breakdown,
+        date_from=valid_date_from,
+        date_to=valid_date_to,
+        presets={
+            "this_month": {"from": first_of_month, "to": today.strftime("%Y-%m-%d")},
+            "three_months": {"from": three_months_ago, "to": today.strftime("%Y-%m-%d")},
+            "six_months": {"from": six_months_ago, "to": today.strftime("%Y-%m-%d")},
+            "all_time": {"from": None, "to": None}
+        }
     )
 
 

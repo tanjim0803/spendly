@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from werkzeug.security import generate_password_hash, check_password_hash
-from database.db import init_db, seed_db, get_user_by_email, create_user
+from database.db import init_db, seed_db, get_user_by_email, create_user, get_user_by_id, get_user_stats, get_top_category, get_recent_expenses, get_category_totals
+
 
 
 app = Flask(__name__)
@@ -99,29 +100,53 @@ def profile():
     if "user_id" not in session:
         return redirect(url_for("login"))
 
-    # Hardcoded mock data for UI validation (Step 4)
+    user_id = session["user_id"]
+    user_row = get_user_by_id(user_id)
+    if not user_row:
+        return redirect(url_for("logout"))
+
+    # User Basic Info
     user = {
-        "name": "Tanjim Ahmed",
-        "email": "tanjim@example.com",
-        "joined_date": "October 2023",
-        "initials": "TA"
+        "name": user_row["name"],
+        "email": user_row["email"],
+        "joined_date": user_row["created_at"][:10], # Simplest format YYYY-MM-DD
+        "initials": "".join([n[0] for n in user_row["name"].split()])
     }
+
+    # Summary Stats
+    stats_row = get_user_stats(user_id)
+    total_spent = stats_row.get("total_spent") or 0.0
+    transaction_count = stats_row.get("transaction_count") or 0
+
     stats = {
-        "total_spent": "$2,450.00",
-        "transaction_count": "42",
-        "top_category": "Dining"
+        "total_spent": f"${total_spent:,.2f}",
+        "transaction_count": str(transaction_count),
+        "top_category": get_top_category(user_id) or "None"
     }
-    recent_transactions = [
-        {"date": "2023-10-25", "desc": "Starbucks Coffee", "category": "Dining", "amount": "-$6.50"},
-        {"date": "2023-10-24", "desc": "Amazon - Books", "category": "Shopping", "amount": "-$24.99"},
-        {"date": "2023-10-22", "desc": "Monthly Rent", "category": "Housing", "amount": "-$1,200.00"},
-    ]
-    category_breakdown = [
-        {"category": "Housing", "amount": "$1,200", "percentage": 60},
-        {"category": "Dining", "amount": "$450", "percentage": 20},
-        {"category": "Shopping", "amount": "$300", "percentage": 15},
-        {"category": "Other", "amount": "$100", "percentage": 5},
-    ]
+
+    # Recent Transactions
+    recent_rows = get_recent_expenses(user_id, limit=5)
+    recent_transactions = []
+    for row in recent_rows:
+        amount = row["amount"]
+        recent_transactions.append({
+            "date": row["date"],
+            "desc": row["description"],
+            "category": row["category"],
+            "amount": f"-${amount:,.2f}"
+        })
+
+    # Category Breakdown
+    category_rows = get_category_totals(user_id)
+    category_breakdown = []
+    for row in category_rows:
+        cat_total = row["total"]
+        percentage = (cat_total / total_spent * 100) if total_spent > 0 else 0
+        category_breakdown.append({
+            "category": row["category"],
+            "amount": f"${cat_total:,.2f}",
+            "percentage": int(percentage)
+        })
 
     return render_template(
         "profile.html",

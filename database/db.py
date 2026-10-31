@@ -24,7 +24,17 @@ def get_user_by_email(email):
         return conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
 
 
+def get_user_by_id(user_id):
+    """
+    Retrieves a user from the database by their ID.
+    Returns a sqlite3.Row if found, otherwise None.
+    """
+    with get_db() as conn:
+        return conn.execute("SELECT name, email, created_at FROM users WHERE id = ?", (user_id,)).fetchone()
+
+
 def create_user(name, email, password_hash):
+
     """
     Inserts a new user into the users table.
     Returns the ID of the newly created user.
@@ -102,3 +112,49 @@ def seed_db():
             expenses
         )
         conn.commit()
+
+
+def get_user_stats(user_id):
+    """
+    Calculates total spent and transaction count for a user.
+    """
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT SUM(amount) as total_spent, COUNT(id) as transaction_count FROM expenses WHERE user_id = ?",
+            (user_id,)
+        ).fetchone()
+        return dict(row) if row else {"total_spent": 0, "transaction_count": 0}
+
+
+def get_top_category(user_id):
+    """
+    Retrieves the category with the highest total spending for a user.
+    """
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT category FROM expenses WHERE user_id = ? GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1",
+            (user_id,)
+        ).fetchone()
+        return row["category"] if row else None
+
+
+def get_recent_expenses(user_id, limit=5):
+    """
+    Retrieves the most recent expenses for a user.
+    """
+    with get_db() as conn:
+        return conn.execute(
+            "SELECT date, description, category, amount FROM expenses WHERE user_id = ? ORDER BY date DESC LIMIT ?",
+            (user_id, limit)
+        ).fetchall()
+
+
+def get_category_totals(user_id):
+    """
+    Retrieves the total spent per category for a user.
+    """
+    with get_db() as conn:
+        return conn.execute(
+            "SELECT category, SUM(amount) as total FROM expenses WHERE user_id = ? GROUP BY category",
+            (user_id,)
+        ).fetchall()

@@ -14,6 +14,30 @@ def get_db():
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
+
+def get_user_by_email(email):
+    """
+    Retrieves a user from the database by their email address.
+    Returns a sqlite3.Row if found, otherwise None.
+    """
+    with get_db() as conn:
+        return conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+
+
+def create_user(name, email, password_hash):
+    """
+    Inserts a new user into the users table.
+    Returns the ID of the newly created user.
+    """
+    with get_db() as conn:
+        cursor = conn.execute(
+            "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
+            (name, email, password_hash)
+        )
+        conn.commit()
+        return cursor.lastrowid
+
+
 def init_db():
     """
     Creates the users and expenses tables if they do not already exist.
